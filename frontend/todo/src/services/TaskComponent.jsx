@@ -1,58 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { getAllTasks, addTask, updateTask, deleteTask } from './TaskService';
+import axios from 'axios';
 
-const TaskComponent = () => {
-    const [tasks, setTasks] = useState([]);
-    const [taskName, setTaskName] = useState('');
+function TaskComponent() {
+  const [tasks, setTasks] = useState([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-    useEffect(() => {
-        loadTasks();
-    }, []);
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/tasks', {
+        params: {
+          page: page,
+          size: 5,
+        },
+      });
+      setTasks(response.data.content);
+      setTotalPages(response.data.totalPages);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
 
-    const loadTasks = () => {
-        getAllTasks().then(response => {
-            setTasks(response.data);
-        });
-    };
+  useEffect(() => {
+    fetchTasks();
+  }, [page]);
 
-    const handleAddTask = () => {
-        const task = { name: taskName }; // adjust based on Task fields
-        addTask(task).then(() => {
-            loadTasks();
-            setTaskName('');
-        });
-    };
+  return (
+    <div>
+      <h2>Tasks</h2>
+      <ul>
+        {tasks.map((task) => (
+          <li key={task.id}>
+            <strong>{task.description}</strong> — {task.assignedTo} — {task.status}
+          </li>
+        ))}
+      </ul>
 
-    const handleDeleteTask = (id) => {
-        deleteTask(id).then(() => loadTasks());
-    };
+      <div style={{ marginTop: '10px' }}>
+        <button
+          onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+          disabled={page === 0}
+        >
+          Previous
+        </button>
 
-    const handleUpdateTask = (task) => {
-        updateTask(task).then(() => loadTasks());
-    };
+        <span style={{ margin: '0 10px' }}>
+          Page {page + 1} of {totalPages}
+        </span>
 
-    return (
-        <div>
-            <h2>Task Manager</h2>
-            <input
-                type="text"
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="Enter task name"
-            />
-            <button onClick={handleAddTask}>Add Task</button>
-
-            <ul>
-                {tasks.map(task => (
-                    <li key={task.id}>
-                        {task.name}
-                        <button onClick={() => handleDeleteTask(task.id)}>Delete</button>
-                        <button onClick={() => handleUpdateTask(task)}>Edit</button>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    );
-};
+        <button
+          onClick={() => setPage((prev) => (prev + 1 < totalPages ? prev + 1 : prev))}
+          disabled={page + 1 >= totalPages}
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default TaskComponent;
